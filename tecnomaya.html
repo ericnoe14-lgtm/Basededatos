@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="TecnoMaya"/>
+  <meta name="theme-color" content="#080b18"/>
+  <title>TecnoMaya — Base de Desbloqueos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}html,body{height:100%;background:#080b18;overscroll-behavior:none;}#root{height:100%;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const {useState,useMemo,useEffect,useRef,createElement:h,Fragment}=React;
+
+const DEFAULT_TIPOS=["FRP","Patrón / PIN","iCloud Bypass","Network Unlock","Cuenta Samsung","Mi Account","Huawei ID","MDM Bypass","IMEI Repair","Flash / Unbrick","Bootloader","Otro"];
+const DEFAULT_HERRAMIENTAS=["UnlockTool","Chimera Tool","3uTools","Z3X","Octoplus","EFT Pro","Pandora Box","UFi Box","Easy JTAG","Miracle Box","Manual / ADB","DC Unlocker","iRemove Tools","Otro"];
+const DEFAULT_METODOS=["Testpoint","EDL Mode","ADB","Cable USB","OTG","JTAG","ISP","iCloud DNS","Oficial Apple","Exploit Software","Sin método especial","Otro"];
+const DEFAULT_MARCAS=["Samsung","Apple","Motorola","Xiaomi","Huawei","LG","OnePlus","Nokia","Tecno","Infinix","ZTE","Vivo","OPPO","Realme","Otro"];
+const DEFAULT_COLORES=["Negro","Blanco","Azul","Verde","Rojo","Morado","Dorado","Plateado","Rosa","Gris","Otro"];
+const DEFAULT_TECNICOS=["Carlos","Ana","Luis","Otro"];
+
+const today=new Date();
+const todayStr=today.toISOString().split("T")[0];
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function fmtL(n){if(!n&&n!==0)return"—";return"L. "+Number(n).toLocaleString("es-HN",{minimumFractionDigits:2});}
+
+const ESTADO_C={"Exitoso":"#00e5b4","En proceso":"#ffd93d","Fallido":"#ff4757","Pendiente":"#a29bfe"};
+const ESTADO_BG={"Exitoso":"#00e5b415","En proceso":"#ffd93d15","Fallido":"#ff475715","Pendiente":"#a29bfe15"};
+
+// ── Brand logos as inline SVG paths or styled divs ──────────────────────────
+const BRAND_LOGOS={
+  "Samsung": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#1428A0"}),
+    h("text",{x:20,y:27,textAnchor:"middle",fontSize:13,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"SAMSUNG".slice(0,3)),
+    h("text",{x:20,y:38,textAnchor:"middle",fontSize:8,fill:"#8899dd",fontFamily:"sans-serif"},"")
+  ),
+  "Apple": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#1c1c1e"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:22,fontFamily:"sans-serif"},"")
+  ),
+  "Motorola": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#EB0000"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:18,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"M")
+  ),
+  "Xiaomi": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#FF6900"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:16,fontWeight:"900",fill:"white",fontFamily:"sans-serif"},"MI")
+  ),
+  "Huawei": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#CF0A2C"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:16,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"HW")
+  ),
+  "LG": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#A50034"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:17,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"LG")
+  ),
+  "OnePlus": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#F5010C"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:15,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"1+")
+  ),
+  "Nokia": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#124191"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:11,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"NOKIA")
+  ),
+  "Tecno": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#0047AB"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:11,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"TECNO")
+  ),
+  "Infinix": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#00A3E0"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:13,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"INF")
+  ),
+  "ZTE": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#005BAC"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:16,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"ZTE")
+  ),
+  "Vivo": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#415FFF"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:14,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"vivo")
+  ),
+  "OPPO": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#1D8348"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:13,fontWeight:"bold",fill:"white",fontFamily:"sans-serif"},"OPPO")
+  ),
+  "Realme": h("svg",{viewBox:"0 0 40 40",fill:"none",xmlns:"http://www.w3.org/2000/svg",width:"100%",height:"100%"},
+    h("rect",{width:40,height:40,rx:10,fill:"#FFCC00"}),
+    h("text",{x:20,y:28,textAnchor:"middle",fontSize:12,fontWeight:"bold",fill:"#111",fontFamily:"sans-serif"},"realme")
+  ),
+};
+function BrandLogo({marca,size=40}){
+  const logo=BRAND_LOGOS[marca];
+  if(logo)return h("div",{style:{width:size,height:size,borderRadius:size*0.28,overflow:"hidden",flexShrink:0}},logo);
+  // Generic fallback: first 2 letters
+  const initials=(marca||"?").slice(0,2).toUpperCase();
+  const colors=["#6c5ce7","#00b894","#e17055","#0984e3","#fd79a8","#fdcb6e"];
+  const ci=marca.charCodeAt(0)%colors.length;
+  return h("div",{style:{width:size,height:size,borderRadius:size*0.28,background:colors[ci],display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.35,fontWeight:900,color:"#fff",flexShrink:0,fontFamily:"inherit"}},initials);
+}
+
+const CSS=`
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#080b18;overscroll-behavior:none;}
+.app{min-height:100svh;background:#080b18;color:#e2e4f0;font-family:'Plus Jakarta Sans',sans-serif;padding-bottom:90px;max-width:430px;margin:0 auto;}
+.header{background:linear-gradient(180deg,#0c1024,#080b18);padding:54px 18px 16px;border-bottom:1px solid #151830;}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#0a0d1e;border-top:1px solid #151830;display:flex;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:100;align-items:center;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#3a4070;font-size:11px;font-family:inherit;font-weight:700;cursor:pointer;padding:6px 0;transition:color .2s;}
+.nav-btn.active{color:#00e5b4;}
+.nav-icon{font-size:22px;line-height:1;}
+.card{background:#0e1228;border:1px solid #1a1e36;border-radius:18px;padding:18px 16px;margin:12px 14px 0;}
+.card-title{font-size:12px;font-weight:700;color:#7b82aa;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;}
+.sheet{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;justify-content:flex-end;}
+.sheet-bg{position:absolute;inset:0;background:#000000bb;backdrop-filter:blur(6px);}
+.sheet-body{position:relative;background:#0e1228;border-radius:26px 26px 0 0;padding:22px 18px calc(36px + env(safe-area-inset-bottom));max-height:95svh;overflow-y:auto;}
+.sheet-handle{width:40px;height:4px;background:#1e2240;border-radius:2px;margin:0 auto 20px;}
+label{font-size:12px;color:#7b82aa;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;display:block;}
+input,select,textarea{background:#12152a;border:1.5px solid #1e2240;color:#e2e4f0;font-family:inherit;font-size:16px;padding:13px 14px;border-radius:13px;width:100%;outline:none;transition:border .2s;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:#00e5b4;}
+textarea{min-height:80px;resize:none;font-size:15px;}
+.form-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.form-1{margin-bottom:12px;}
+.btn-save{background:linear-gradient(135deg,#00e5b4,#0099cc);border:none;color:#080b18;font-family:inherit;font-weight:900;font-size:17px;padding:16px;border-radius:14px;width:100%;cursor:pointer;margin-top:10px;}
+.btn-cancel{background:#12152a;border:1.5px solid #1e2240;color:#7b82aa;font-family:inherit;font-weight:600;font-size:15px;padding:13px;border-radius:13px;width:100%;cursor:pointer;margin-top:10px;}
+.estado-seg{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:14px;}
+.estado-opt{background:#12152a;border:1.5px solid #1e2240;color:#7b82aa;font-family:inherit;font-size:11px;font-weight:700;padding:9px 4px;border-radius:11px;cursor:pointer;text-align:center;transition:all .2s;}
+.estado-ok{border-color:#00e5b4!important;color:#00e5b4!important;background:#00e5b415!important;}
+.estado-proc{border-color:#ffd93d!important;color:#ffd93d!important;background:#ffd93d15!important;}
+.estado-fail{border-color:#ff4757!important;color:#ff4757!important;background:#ff475715!important;}
+.estado-pend{border-color:#a29bfe!important;color:#a29bfe!important;background:#a29bfe15!important;}
+.device-card{background:#0e1228;border:1px solid #1a1e36;border-radius:16px;padding:15px;margin:10px 14px 0;cursor:pointer;transition:border-color .15s;}
+.device-card:active{border-color:#00e5b4;}
+.estado-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;}
+.search-bar{background:#0e1228;border:1.5px solid #1a1e36;border-radius:14px;padding:13px 14px 13px 42px;color:#e2e4f0;font-family:inherit;font-size:16px;width:100%;outline:none;}
+.search-bar:focus{border-color:#00e5b4;}
+.search-wrap{position:relative;}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;pointer-events:none;}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#0e1228;border:1.5px solid #1a1e36;border-radius:10px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;color:#7b82aa;white-space:nowrap;transition:border-color .15s;}
+.chip.active{border-color:#00e5b4;color:#00e5b4;}
+.toast{position:fixed;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#0e1228;border:1.5px solid #1e2240;color:#e2e4f0;padding:11px 22px;border-radius:13px;font-size:14px;font-weight:700;z-index:999;white-space:nowrap;box-shadow:0 8px 32px #00000080;}
+.toast.err{border-color:#ff4757;color:#ff6b6b;}
+.del-sheet{position:fixed;inset:0;z-index:300;display:flex;align-items:flex-end;justify-content:center;}
+.del-body{background:#0e1228;border-radius:24px 24px 0 0;padding:26px 18px calc(34px + env(safe-area-inset-bottom));width:100%;max-width:430px;}
+.btn-del{background:linear-gradient(135deg,#ff4757,#ff6b6b);border:none;color:#fff;font-family:inherit;font-weight:900;font-size:17px;padding:16px;border-radius:14px;width:100%;cursor:pointer;}
+.detail-sheet{position:fixed;inset:0;z-index:250;display:flex;flex-direction:column;justify-content:flex-end;}
+.detail-body{position:relative;background:#0e1228;border-radius:26px 26px 0 0;padding:22px 18px calc(36px + env(safe-area-inset-bottom));max-height:94svh;overflow-y:auto;}
+.detail-row{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid #111428;align-items:flex-start;}
+.detail-row:last-child{border-bottom:none;}
+.detail-lbl{font-size:11px;color:#7b82aa;font-weight:700;text-transform:uppercase;letter-spacing:.4px;min-width:100px;padding-top:2px;}
+.detail-val{font-size:15px;color:#e2e4f0;font-weight:600;flex:1;word-break:break-word;}
+.seg{display:flex;background:#0e1228;border:1px solid #1a1e36;border-radius:13px;padding:3px;gap:3px;}
+.seg-btn{flex:1;background:none;border:none;color:#4a5080;font-family:inherit;font-size:11px;font-weight:700;padding:9px 2px;border-radius:10px;cursor:pointer;transition:all .2s;text-align:center;}
+.seg-btn.active{background:#1a1e36;color:#e2e4f0;}
+.settings-item{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid #111428;}
+.settings-item:last-child{border-bottom:none;}
+.icon-btn{background:none;border:none;cursor:pointer;padding:6px;font-size:18px;color:#7b82aa;}
+select option{background:#0e1228;}
+.tag{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;}
+.marca-select-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;}
+.marca-opt{background:#12152a;border:1.5px solid #1e2240;border-radius:12px;padding:10px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s;}
+.marca-opt.selected{border-color:#00e5b4;}
+.marca-opt-lbl{font-size:11px;font-weight:700;color:#7b82aa;text-align:center;}
+.marca-opt.selected .marca-opt-lbl{color:#00e5b4;}
+`;
+
+function App(){
+  const [records,setRecords]=useState(()=>load("tm_records",[]));
+  const [tipos,setTipos]=useState(()=>load("tm_tipos",DEFAULT_TIPOS));
+  const [herramientas,setHerramientas]=useState(()=>load("tm_herr",DEFAULT_HERRAMIENTAS));
+  const [metodos,setMetodos]=useState(()=>load("tm_met",DEFAULT_METODOS));
+  const [marcas,setMarcas]=useState(()=>load("tm_marcas",DEFAULT_MARCAS));
+  const [colores,setColores]=useState(()=>load("tm_colores",DEFAULT_COLORES));
+  const [tecnicos,setTecnicos]=useState(()=>load("tm_tecnicos",DEFAULT_TECNICOS));
+
+  const [activeTab,setActiveTab]=useState("buscar");
+  const [showForm,setShowForm]=useState(false);
+  const [editRec,setEditRec]=useState(null);
+  const [viewRec,setViewRec]=useState(null);
+  const [confirmDel,setConfirmDel]=useState(null);
+  const [toast,setToast]=useState(null);
+  const [searchQ,setSearchQ]=useState("");
+  const [filterEstado,setFilterEstado]=useState("todos");
+  const [filterMarca,setFilterMarca]=useState("todas");
+  const [settingsTab,setSettingsTab]=useState("marcas");
+  const [showMarcaPicker,setShowMarcaPicker]=useState(false);
+  const fileInputRef=useRef();
+
+  const emptyForm={
+    ticket:"",marca:marcas[0]||"",modelo:"",color:colores[0]||"",
+    tipo:tipos[0]||"",herramienta:herramientas[0]||"",metodo:metodos[0]||"",
+    tecnico:tecnicos[0]||"",fecha:todayStr,precio:"",estado:"Exitoso",notas:"",imei:""
+  };
+  const [form,setForm]=useState(emptyForm);
+
+  useEffect(()=>save("tm_records",records),[records]);
+  useEffect(()=>save("tm_tipos",tipos),[tipos]);
+  useEffect(()=>save("tm_herr",herramientas),[herramientas]);
+  useEffect(()=>save("tm_met",metodos),[metodos]);
+  useEffect(()=>save("tm_marcas",marcas),[marcas]);
+  useEffect(()=>save("tm_colores",colores),[colores]);
+  useEffect(()=>save("tm_tecnicos",tecnicos),[tecnicos]);
+
+  function showToast(msg,type="ok"){setToast({msg,type});setTimeout(()=>setToast(null),2600);}
+
+  const filtered=useMemo(()=>{
+    let list=[...records];
+    if(filterEstado!=="todos")list=list.filter(r=>r.estado===filterEstado);
+    if(filterMarca!=="todas")list=list.filter(r=>r.marca===filterMarca);
+    if(searchQ.trim()){
+      const q=searchQ.toLowerCase();
+      list=list.filter(r=>
+        (r.modelo||"").toLowerCase().includes(q)||
+        (r.marca||"").toLowerCase().includes(q)||
+        (r.tipo||"").toLowerCase().includes(q)||
+        (r.herramienta||"").toLowerCase().includes(q)||
+        (r.metodo||"").toLowerCase().includes(q)||
+        (r.notas||"").toLowerCase().includes(q)||
+        (r.imei||"").toLowerCase().includes(q)||
+        (r.ticket||"").toLowerCase().includes(q)||
+        (r.tecnico||"").toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  },[records,searchQ,filterEstado,filterMarca]);
+
+  const stats=useMemo(()=>({
+    total:records.length,
+    exitosos:records.filter(r=>r.estado==="Exitoso").length,
+    enproceso:records.filter(r=>r.estado==="En proceso").length,
+    fallidos:records.filter(r=>r.estado==="Fallido").length,
+    pendientes:records.filter(r=>r.estado==="Pendiente").length,
+    mes:records.filter(r=>{const d=new Date(r.fecha+"T00:00:00");return d.getMonth()===today.getMonth()&&d.getFullYear()===today.getFullYear();}).length,
+  }),[records]);
+
+  function handleSave(){
+    if(!form.modelo.trim()){showToast("Ingresa el modelo","err");return;}
+    const rec={...form,id:editRec?editRec.id:genId()};
+    if(editRec){setRecords(rs=>rs.map(r=>r.id===editRec.id?rec:r));showToast("Actualizado ✓");}
+    else{setRecords(rs=>[rec,...rs]);showToast("Proceso guardado ✓");}
+    setShowForm(false);setEditRec(null);setForm(emptyForm);
+  }
+  function handleDelete(id){setRecords(rs=>rs.filter(r=>r.id!==id));setConfirmDel(null);setViewRec(null);showToast("Eliminado");}
+  function startEdit(r){setForm({...r});setEditRec(r);setShowForm(true);setViewRec(null);}
+
+  function exportJSON(){
+    const data={records,tipos,herramientas,metodos,marcas,colores,tecnicos,exported:new Date().toISOString(),version:2};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`tecnomaya_backup_${todayStr}.json`;a.click();URL.revokeObjectURL(url);showToast("Backup exportado ✓");
+  }
+  function exportCSV(){
+    const rows=[["Ticket","Fecha","Marca","Modelo","Color","Tipo","Herramienta","Método","Técnico","Precio","Estado","IMEI","Notas"]];
+    records.forEach(r=>rows.push([r.ticket||"",r.fecha,r.marca,r.modelo,r.color||"",r.tipo,r.herramienta,r.metodo,r.tecnico||"",r.precio||"",r.estado,r.imei||"",r.notas||""]));
+    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`tecnomaya_${todayStr}.csv`;a.click();URL.revokeObjectURL(url);showToast("CSV exportado ✓");
+  }
+  function importJSON(e){
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(data.records)setRecords(data.records);
+        if(data.tipos)setTipos(data.tipos);
+        if(data.herramientas)setHerramientas(data.herramientas);
+        if(data.metodos)setMetodos(data.metodos);
+        if(data.marcas)setMarcas(data.marcas);
+        if(data.colores)setColores(data.colores);
+        if(data.tecnicos)setTecnicos(data.tecnicos);
+        showToast("Backup restaurado ✓");
+      }catch{showToast("Archivo inválido","err");}
+    };
+    reader.readAsText(file);e.target.value="";
+  }
+
+  // Generic list editor
+  function ListEditor({items,setItems,label}){
+    const [nv,setNv]=useState("");
+    const [ei,setEi]=useState(null);const [ev,setEv]=useState("");
+    function add(){const v=nv.trim();if(!v||items.includes(v))return;setItems(i=>[...i,v]);setNv("");showToast("Agregado ✓");}
+    function se(idx){const v=ev.trim();if(!v)return;setItems(i=>i.map((x,j)=>j===idx?v:x));setEi(null);showToast("Actualizado ✓");}
+    function del(idx){setItems(i=>i.filter((_,j)=>j!==idx));showToast("Eliminado");}
+    return h(Fragment,null,[
+      ...items.map((item,idx)=>h("div",{key:idx,className:"settings-item"},
+        ei===idx?[
+          h("input",{key:"i",value:ev,onChange:e=>setEv(e.target.value),style:{flex:1,fontSize:15,padding:"8px 11px"},autoFocus:true,onKeyDown:e=>{if(e.key==="Enter")se(idx);}}),
+          h("button",{key:"ok",className:"icon-btn",style:{color:"#00e5b4",fontSize:18},onClick:()=>se(idx)},"✓"),
+          h("button",{key:"x",className:"icon-btn",onClick:()=>setEi(null)},"✕"),
+        ]:[
+          // show logo for brands
+          label==="Marca"&&h(BrandLogo,{key:"logo",marca:item,size:32}),
+          h("span",{key:"n",style:{flex:1,fontSize:15,marginLeft:label==="Marca"?8:0}},item),
+          h("button",{key:"e",className:"icon-btn",onClick:()=>{setEi(idx);setEv(item);}},"✏️"),
+          h("button",{key:"d",className:"icon-btn",style:{color:"#ff4757"},onClick:()=>del(idx)},"🗑️"),
+        ]
+      )),
+      h("div",{key:"add",style:{display:"flex",gap:8,marginTop:12}},[
+        h("input",{key:"i",placeholder:`Nueva ${label.toLowerCase()}`,value:nv,onChange:e=>setNv(e.target.value),style:{flex:1,fontSize:15,padding:"10px 13px"},onKeyDown:e=>{if(e.key==="Enter")add();}}),
+        h("button",{key:"b",style:{background:"linear-gradient(135deg,#00e5b4,#0099cc)",border:"none",color:"#080b18",fontFamily:"inherit",fontWeight:800,fontSize:14,padding:"10px 16px",borderRadius:11,cursor:"pointer",flexShrink:0},onClick:add},"+ Add"),
+      ]),
+    ]);
+  }
+
+  // Marca picker sheet
+  const MarcaPicker=()=>h("div",{className:"sheet"},[
+    h("div",{key:"bg",className:"sheet-bg",onClick:()=>setShowMarcaPicker(false)}),
+    h("div",{key:"body",className:"sheet-body"},[
+      h("div",{key:"h",className:"sheet-handle"}),
+      h("div",{key:"t",style:{fontWeight:800,fontSize:18,marginBottom:16}},"Seleccionar marca"),
+      h("div",{key:"grid",className:"marca-select-grid"},
+        marcas.map(m=>h("div",{key:m,className:`marca-opt ${form.marca===m?"selected":""}`,onClick:()=>{setForm(f=>({...f,marca:m}));setShowMarcaPicker(false);}},[
+          h("div",{key:"logo",style:{width:40,height:40}},h(BrandLogo,{marca:m,size:40})),
+          h("div",{key:"lbl",className:"marca-opt-lbl"},m),
+        ]))
+      ),
+    ]),
+  ]);
+
+  const estadoClass={"Exitoso":"estado-ok","En proceso":"estado-proc","Fallido":"estado-fail","Pendiente":"estado-pend"};
+
+  return h(Fragment,null,[
+    h("style",{key:"css"},CSS),
+    toast&&h("div",{key:"toast",className:`toast ${toast.type==="err"?"err":""}`},toast.msg),
+
+    confirmDel&&h("div",{key:"cdel",className:"del-sheet",onClick:()=>setConfirmDel(null)},
+      h("div",{className:"del-body",onClick:e=>e.stopPropagation()},[
+        h("div",{key:"t",style:{fontWeight:800,fontSize:18,marginBottom:8}},"¿Eliminar registro?"),
+        h("div",{key:"s",style:{fontSize:14,color:"#7b82aa",marginBottom:22}},"Esta acción no se puede deshacer."),
+        h("button",{key:"b1",className:"btn-del",onClick:()=>handleDelete(confirmDel)},"Sí, eliminar"),
+        h("button",{key:"b2",className:"btn-cancel",onClick:()=>setConfirmDel(null)},"Cancelar"),
+      ])
+    ),
+
+    // Detail
+    viewRec&&h("div",{key:"det",className:"detail-sheet"},[
+      h("div",{key:"bg",style:{position:"absolute",inset:0,background:"#000000bb",backdropFilter:"blur(6px)"},onClick:()=>setViewRec(null)}),
+      h("div",{key:"body",className:"detail-body"},[
+        h("div",{key:"handle",className:"sheet-handle"}),
+        h("div",{key:"hdr",style:{display:"flex",alignItems:"flex-start",gap:14,marginBottom:20}},[
+          h("div",{key:"logo",style:{width:52,height:52}},h(BrandLogo,{marca:viewRec.marca,size:52})),
+          h("div",{key:"info",style:{flex:1}},[
+            h("div",{key:"modelo",style:{fontSize:22,fontWeight:900,letterSpacing:-.5,lineHeight:1.1}},viewRec.modelo),
+            h("div",{key:"marca",style:{fontSize:14,color:"#7b82aa",marginTop:4}},`${viewRec.marca}${viewRec.color?` · ${viewRec.color}`:""}`),
+            viewRec.ticket&&h("div",{key:"ticket",style:{fontSize:13,color:"#4d96ff",marginTop:3,fontWeight:700}},`#${viewRec.ticket}`),
+          ]),
+          h("div",{key:"badge",className:"estado-badge",style:{background:ESTADO_BG[viewRec.estado],color:ESTADO_C[viewRec.estado],border:`1px solid ${ESTADO_C[viewRec.estado]}44`,flexShrink:0}},[
+            h("span",{key:"d",style:{width:7,height:7,borderRadius:"50%",background:ESTADO_C[viewRec.estado],display:"inline-block"}}),
+            viewRec.estado,
+          ]),
+        ]),
+        ...[
+          ["🔓 Tipo de proceso",viewRec.tipo],
+          ["🛠️ Herramienta",viewRec.herramienta],
+          ["⚡ Método / Vía",viewRec.metodo],
+          ["📅 Fecha",new Date(viewRec.fecha+"T00:00:00").toLocaleDateString("es-HN",{weekday:"long",year:"numeric",month:"long",day:"numeric"})],
+          viewRec.tecnico&&["👤 Técnico",viewRec.tecnico],
+          viewRec.precio&&["💰 Precio",fmtL(viewRec.precio)],
+          viewRec.imei&&["🔢 IMEI",viewRec.imei],
+          viewRec.notas&&["📝 Notas",viewRec.notas],
+        ].filter(Boolean).map(([lbl,val],i)=>
+          h("div",{key:i,className:"detail-row"},[
+            h("div",{key:"l",className:"detail-lbl"},lbl),
+            h("div",{key:"v",className:"detail-val"},val),
+          ])
+        ),
+        h("div",{key:"acts",style:{display:"flex",gap:10,marginTop:20}},[
+          h("button",{key:"e",style:{flex:1,background:"linear-gradient(135deg,#00e5b4,#0099cc)",border:"none",color:"#080b18",fontFamily:"inherit",fontWeight:800,fontSize:16,padding:"14px",borderRadius:13,cursor:"pointer"},onClick:()=>startEdit(viewRec)},"✏️ Editar"),
+          h("button",{key:"d",style:{flex:1,background:"#12152a",border:"1.5px solid #ff4757",color:"#ff4757",fontFamily:"inherit",fontWeight:700,fontSize:16,padding:"14px",borderRadius:13,cursor:"pointer"},onClick:()=>setConfirmDel(viewRec.id)},"🗑️ Eliminar"),
+        ]),
+        h("button",{key:"close",className:"btn-cancel",onClick:()=>setViewRec(null)},"Cerrar"),
+      ]),
+    ]),
+
+    // Form
+    showForm&&h("div",{key:"form",className:"sheet"},[
+      showMarcaPicker&&h(MarcaPicker,{key:"mp"}),
+      h("div",{key:"bg",className:"sheet-bg",onClick:()=>{if(!showMarcaPicker){setShowForm(false);setEditRec(null);setForm(emptyForm);}}}),
+      h("div",{key:"body",className:"sheet-body"},[
+        h("div",{key:"handle",className:"sheet-handle"}),
+        h("div",{key:"title",style:{fontWeight:900,fontSize:20,marginBottom:18}},editRec?"✏️ Editar proceso":"🔓 Nuevo proceso"),
+
+        // Estado
+        h("label",{key:"elbl"},"Estado"),
+        h("div",{key:"eseg",className:"estado-seg"},[
+          ["Exitoso","✅","estado-ok"],["En proceso","⏳","estado-proc"],["Fallido","❌","estado-fail"],["Pendiente","🕐","estado-pend"]
+        ].map(([e,ic,cls])=>h("button",{key:e,className:`estado-opt ${form.estado===e?cls:""}`,onClick:()=>setForm(f=>({...f,estado:e}))},`${ic} ${e}`))),
+
+        // Ticket + Fecha
+        h("div",{key:"r0",className:"form-2"},[
+          h("div",{key:"tk"},[h("label",{key:"l"},"# Ticket / Orden"),h("input",{key:"i",type:"text",placeholder:"Ej: 001, TM-025",value:form.ticket,onChange:e=>setForm(f=>({...f,ticket:e.target.value}))})]),
+          h("div",{key:"fd"},[h("label",{key:"l"},"Fecha"),h("input",{key:"i",type:"date",value:form.fecha,onChange:e=>setForm(f=>({...f,fecha:e.target.value}))})]),
+        ]),
+
+        // Marca picker button
+        h("div",{key:"rmarca",className:"form-1"},[
+          h("label",{key:"l"},"Marca"),
+          h("button",{key:"btn",style:{background:"#12152a",border:"1.5px solid #1e2240",borderRadius:13,padding:"10px 14px",width:"100%",display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"border-color .2s"},onClick:()=>setShowMarcaPicker(true)},[
+            h("div",{key:"logo",style:{width:36,height:36}},h(BrandLogo,{marca:form.marca,size:36})),
+            h("span",{key:"name",style:{flex:1,textAlign:"left",fontSize:16,color:"#e2e4f0",fontFamily:"inherit",fontWeight:600}},form.marca),
+            h("span",{key:"arr",style:{color:"#7b82aa",fontSize:18}},"›"),
+          ]),
+        ]),
+
+        // Modelo + Color
+        h("div",{key:"r1",className:"form-2"},[
+          h("div",{key:"mod"},[h("label",{key:"l"},"Modelo"),h("input",{key:"i",type:"text",placeholder:"Ej: A54 5G, 13 Pro",value:form.modelo,onChange:e=>setForm(f=>({...f,modelo:e.target.value}))})]),
+          h("div",{key:"col"},[h("label",{key:"l"},"Color"),h("select",{key:"s",value:form.color,onChange:e=>setForm(f=>({...f,color:e.target.value}))},colores.map(c=>h("option",{key:c,value:c},c)))]),
+        ]),
+
+        // Tipo proceso
+        h("div",{key:"r2",className:"form-1"},[h("label",{key:"l"},"Tipo de proceso"),h("select",{key:"s",value:form.tipo,onChange:e=>setForm(f=>({...f,tipo:e.target.value}))},tipos.map(t=>h("option",{key:t,value:t},t)))]),
+
+        // Herramienta + Método
+        h("div",{key:"r3",className:"form-2"},[
+          h("div",{key:"h"},[h("label",{key:"l"},"Herramienta"),h("select",{key:"s",value:form.herramienta,onChange:e=>setForm(f=>({...f,herramienta:e.target.value}))},herramientas.map(t=>h("option",{key:t,value:t},t)))]),
+          h("div",{key:"m"},[h("label",{key:"l"},"Método"),h("select",{key:"s",value:form.metodo,onChange:e=>setForm(f=>({...f,metodo:e.target.value}))},metodos.map(t=>h("option",{key:t,value:t},t)))]),
+        ]),
+
+        // Técnico + Precio
+        h("div",{key:"r4",className:"form-2"},[
+          h("div",{key:"tec"},[h("label",{key:"l"},"Técnico"),h("select",{key:"s",value:form.tecnico,onChange:e=>setForm(f=>({...f,tecnico:e.target.value}))},tecnicos.map(t=>h("option",{key:t,value:t},t)))]),
+          h("div",{key:"pr"},[h("label",{key:"l"},"Precio (L.)"),h("input",{key:"i",type:"number",inputMode:"decimal",placeholder:"0.00",value:form.precio,onChange:e=>setForm(f=>({...f,precio:e.target.value}))})]),
+        ]),
+
+        // IMEI
+        h("div",{key:"r5",className:"form-1"},[h("label",{key:"l"},"IMEI (opcional)"),h("input",{key:"i",type:"text",inputMode:"numeric",placeholder:"15 dígitos...",value:form.imei,onChange:e=>setForm(f=>({...f,imei:e.target.value}))})]),
+
+        // Notas
+        h("div",{key:"r6",className:"form-1"},[h("label",{key:"l"},"Notas / Detalles"),h("textarea",{key:"t",placeholder:"Versión firmware, pasos especiales, observaciones...",value:form.notas,onChange:e=>setForm(f=>({...f,notas:e.target.value}))})]),
+
+        h("button",{key:"save",className:"btn-save",onClick:handleSave},editRec?"Guardar cambios":"Guardar proceso"),
+        h("button",{key:"cancel",className:"btn-cancel",onClick:()=>{setShowForm(false);setEditRec(null);setForm(emptyForm);}},"Cancelar"),
+      ]),
+    ]),
+
+    // ── MAIN APP ──
+    h("div",{key:"app",className:"app"},[
+
+      h("div",{key:"hdr",className:"header"},[
+        h("div",{key:"brand",style:{display:"flex",alignItems:"center",gap:12,marginBottom:14}},[
+          h("div",{key:"logo",style:{width:46,height:46,borderRadius:14,background:"linear-gradient(135deg,#00e5b4,#0099cc)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}},"🔓"),
+          h("div",{key:"info"},[
+            h("div",{key:"name",style:{fontSize:22,fontWeight:900,letterSpacing:-.5}},"TecnoMaya"),
+            h("div",{key:"sub",style:{fontSize:12,color:"#7b82aa",fontWeight:600}},"Base de procesos de desbloqueo"),
+          ]),
+        ]),
+        h("div",{key:"stats",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},[
+          {l:"Total",v:stats.total,c:"#e2e4f0"},
+          {l:"Exitosos",v:stats.exitosos,c:"#00e5b4"},
+          {l:"Este mes",v:stats.mes,c:"#4d96ff"},
+        ].map((s,i)=>h("div",{key:i,style:{background:"#12152a",borderRadius:12,padding:"11px 8px",textAlign:"center"}},[
+          h("div",{key:"v",style:{fontSize:22,fontWeight:900,color:s.c}},s.v),
+          h("div",{key:"l",style:{fontSize:10,color:"#7b82aa",fontWeight:600,marginTop:2}},s.l),
+        ]))),
+      ]),
+
+      // BUSCAR
+      activeTab==="buscar"&&h("div",{key:"buscar",style:{paddingBottom:8}},[
+        h("div",{key:"sb",style:{padding:"14px 14px 0"}},[
+          h("div",{key:"sw",className:"search-wrap"},[
+            h("span",{key:"i",className:"search-icon"},"🔍"),
+            h("input",{key:"inp",className:"search-bar",placeholder:"Modelo, herramienta, IMEI, ticket...",value:searchQ,onChange:e=>setSearchQ(e.target.value)}),
+          ]),
+          h("div",{key:"chips",style:{display:"flex",gap:7,marginTop:10,overflowX:"auto",paddingBottom:4}},[
+            ...["todos","Exitoso","En proceso","Pendiente","Fallido"].map(e=>h("button",{key:e,className:`chip ${filterEstado===e?"active":""}`,onClick:()=>setFilterEstado(e)},
+              e==="todos"?"Todos":e==="Exitoso"?"✅":e==="En proceso"?"⏳":e==="Pendiente"?"🕐":"❌"
+            )),
+            h("div",{key:"sep",style:{width:1,background:"#1a1e36",flexShrink:0}}),
+            h("button",{key:"all",className:`chip ${filterMarca==="todas"?"active":""}`,onClick:()=>setFilterMarca("todas")},"Todas"),
+            ...marcas.map(m=>h("button",{key:m,className:`chip ${filterMarca===m?"active":""}`,onClick:()=>setFilterMarca(m)},[
+              h("div",{key:"l",style:{width:18,height:18}},h(BrandLogo,{marca:m,size:18})),
+              m,
+            ])),
+          ]),
+          h("div",{key:"count",style:{fontSize:13,color:"#4a5080",fontWeight:600,marginTop:10}},`${filtered.length} ${filtered.length===1?"resultado":"resultados"}`),
+        ]),
+
+        filtered.length===0?h("div",{key:"empty",style:{textAlign:"center",padding:"60px 20px",color:"#4a5080"}},[
+          h("div",{key:"i",style:{fontSize:50,marginBottom:12}},"🔍"),
+          h("div",{key:"t",style:{fontSize:18,fontWeight:700,marginBottom:6}},searchQ?"Sin resultados":"Sin procesos aún"),
+          h("div",{key:"s",style:{fontSize:14}},searchQ?"Intenta otra búsqueda":"Toca ＋ para agregar el primero"),
+        ]):filtered.map(r=>h("div",{key:r.id,className:"device-card",onClick:()=>setViewRec(r)},[
+          h("div",{key:"top",style:{display:"flex",alignItems:"center",gap:12,marginBottom:10}},[
+            h("div",{key:"logo",style:{width:46,height:46}},h(BrandLogo,{marca:r.marca,size:46})),
+            h("div",{key:"info",style:{flex:1,minWidth:0}},[
+              h("div",{key:"mod",style:{fontSize:17,fontWeight:800,letterSpacing:-.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.modelo),
+              h("div",{key:"sub",style:{fontSize:12,color:"#7b82aa",marginTop:2}},`${r.marca}${r.color?" · "+r.color:""}${r.ticket?" · #"+r.ticket:""}`),
+            ]),
+            h("div",{key:"badge",className:"estado-badge",style:{background:ESTADO_BG[r.estado],color:ESTADO_C[r.estado],border:`1px solid ${ESTADO_C[r.estado]}33`,flexShrink:0}},[
+              h("span",{key:"d",style:{width:6,height:6,borderRadius:"50%",background:ESTADO_C[r.estado],display:"inline-block"}}),
+              r.estado,
+            ]),
+          ]),
+          h("div",{key:"tags",style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}},[
+            h("span",{key:"t",className:"tag",style:{background:"#c77dff15",color:"#c77dff"}},`🔓 ${r.tipo}`),
+            h("span",{key:"h",className:"tag",style:{background:"#4d96ff15",color:"#4d96ff"}},`🛠️ ${r.herramienta}`),
+            h("span",{key:"m",className:"tag",style:{background:"#ffd93d15",color:"#ffd93d"}},`⚡ ${r.metodo}`),
+          ]),
+          h("div",{key:"footer",style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},[
+            h("div",{key:"fecha",style:{fontSize:12,color:"#4a5080",fontWeight:600}},new Date(r.fecha+"T00:00:00").toLocaleDateString("es-HN",{day:"numeric",month:"short",year:"numeric"})),
+            h("div",{key:"right",style:{display:"flex",gap:10,alignItems:"center"}},[
+              r.tecnico&&h("span",{key:"tec",style:{fontSize:12,color:"#7b82aa"}},`👤 ${r.tecnico}`),
+              r.precio&&h("span",{key:"pr",style:{fontSize:13,fontWeight:700,color:"#00e5b4"}},fmtL(r.precio)),
+            ]),
+          ]),
+        ])),
+      ]),
+
+      // AJUSTES
+      activeTab==="ajustes"&&h("div",{key:"adj",style:{paddingBottom:8}},[
+        h("div",{key:"seg",style:{padding:"14px 14px 0"}},
+          h("div",{className:"seg"},
+            [["marcas","📱 Marcas"],["tipos","🔓 Tipos"],["herr","🛠️ Herr."],["metodos","⚡ Mét."],["otros","👤 Otros"],["backup","💾 Backup"]].map(([k,l])=>
+              h("button",{key:k,className:`seg-btn ${settingsTab===k?"active":""}`,onClick:()=>setSettingsTab(k)},l)
+            )
+          )
+        ),
+
+        settingsTab==="marcas"&&h("div",{key:"mc",className:"card"},[
+          h("div",{key:"t",className:"card-title"},"Marcas de dispositivos"),
+          h("div",{key:"note",style:{fontSize:13,color:"#4a5080",marginBottom:14}},"El logo se genera automáticamente para marcas conocidas."),
+          h(ListEditor,{key:"le",items:marcas,setItems:setMarcas,label:"Marca"}),
+        ]),
+        settingsTab==="tipos"&&h("div",{key:"tp",className:"card"},[h("div",{key:"t",className:"card-title"},"Tipos de proceso"),h(ListEditor,{key:"le",items:tipos,setItems:setTipos,label:"Tipo"})]),
+        settingsTab==="herr"&&h("div",{key:"hr",className:"card"},[h("div",{key:"t",className:"card-title"},"Herramientas"),h(ListEditor,{key:"le",items:herramientas,setItems:setHerramientas,label:"Herramienta"})]),
+        settingsTab==="metodos"&&h("div",{key:"mt",className:"card"},[h("div",{key:"t",className:"card-title"},"Métodos / Vías"),h(ListEditor,{key:"le",items:metodos,setItems:setMetodos,label:"Método"})]),
+        settingsTab==="otros"&&h("div",{key:"ot"},[
+          h("div",{key:"tec",className:"card",style:{marginBottom:0}},[h("div",{key:"t",className:"card-title"},"Técnicos"),h(ListEditor,{key:"le",items:tecnicos,setItems:setTecnicos,label:"Técnico"})]),
+          h("div",{key:"col",className:"card"},[h("div",{key:"t",className:"card-title"},"Colores"),h(ListEditor,{key:"le",items:colores,setItems:setColores,label:"Color"})]),
+        ]),
+        settingsTab==="backup"&&h("div",{key:"bkp"},[
+          h("div",{key:"exp",className:"card"},[
+            h("div",{key:"t",className:"card-title"},"Exportar datos"),
+            h("button",{key:"j",style:{background:"linear-gradient(135deg,#00e5b4,#0099cc)",border:"none",color:"#080b18",fontFamily:"inherit",fontWeight:800,fontSize:16,padding:"15px",borderRadius:14,width:"100%",cursor:"pointer",marginBottom:10},onClick:exportJSON},"💾 Exportar Backup (.json)"),
+            h("button",{key:"c",style:{background:"#12152a",border:"1.5px solid #1a1e36",color:"#e2e4f0",fontFamily:"inherit",fontWeight:700,fontSize:16,padding:"15px",borderRadius:14,width:"100%",cursor:"pointer"},onClick:exportCSV},"📊 Exportar a Excel (.csv)"),
+          ]),
+          h("div",{key:"imp",className:"card"},[
+            h("div",{key:"t",className:"card-title"},"Restaurar backup"),
+            h("div",{key:"s",style:{fontSize:14,color:"#7b82aa",marginBottom:14}},"Importa un .json exportado previamente."),
+            h("input",{key:"f",type:"file",accept:".json",ref:fileInputRef,onChange:importJSON,style:{display:"none"}}),
+            h("button",{key:"b",style:{background:"#12152a",border:"1.5px dashed #ffd93d",color:"#ffd93d",fontFamily:"inherit",fontWeight:700,fontSize:16,padding:"15px",borderRadius:14,width:"100%",cursor:"pointer"},onClick:()=>fileInputRef.current.click()},"📂 Seleccionar archivo .json"),
+          ]),
+          h("div",{key:"st",className:"card"},[
+            h("div",{key:"t",className:"card-title"},"Estadísticas"),
+            h("div",{key:"g",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+              [{l:"Total registros",v:records.length},{l:"Este mes",v:stats.mes},{l:"Exitosos",v:stats.exitosos},{l:"Pendientes",v:stats.pendientes}].map((s,i)=>
+                h("div",{key:i,style:{background:"#111428",borderRadius:13,padding:"12px 14px"}},[
+                  h("div",{key:"l",style:{fontSize:11,color:"#7b82aa",fontWeight:600}},s.l),
+                  h("div",{key:"v",style:{fontSize:24,fontWeight:900,color:"#00e5b4",marginTop:4}},s.v),
+                ])
+              )
+            ),
+          ]),
+        ]),
+      ]),
+
+      h("nav",{key:"nav",className:"nav"},[
+        h("button",{key:"b",className:`nav-btn ${activeTab==="buscar"?"active":""}`,onClick:()=>setActiveTab("buscar")},[h("span",{key:"i",className:"nav-icon"},"🔍"),"Buscar"]),
+        h("div",{key:"fab",style:{flex:1,display:"flex",justifyContent:"center",alignItems:"center"}},
+          h("button",{style:{width:56,height:56,borderRadius:18,background:"linear-gradient(135deg,#00e5b4,#0099cc)",border:"none",fontSize:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px #00e5b455",marginBottom:4},onClick:()=>{setForm(emptyForm);setEditRec(null);setShowForm(true);}},"＋")
+        ),
+        h("button",{key:"a",className:`nav-btn ${activeTab==="ajustes"?"active":""}`,onClick:()=>setActiveTab("ajustes")},[h("span",{key:"i",className:"nav-icon"},"⚙️"),"Ajustes"]),
+      ]),
+    ]),
+  ]);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
